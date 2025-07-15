@@ -29,6 +29,7 @@ from rich.rule import Rule
 
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.utils.error_logger import get_error_logger
 from cli.models import AnalystType
 from cli.utils import *
 
@@ -957,6 +958,21 @@ def run_batch_analysis(selections, companies):
                 
         except Exception as e:
             console.print(f"[red]Error analyzing {ticker}: {e}[/red]")
+            
+            # Log the error
+            error_logger = get_error_logger()
+            error_logger.log_error(
+                error_type=type(e).__name__,
+                error_message=str(e),
+                component="batch_analysis",
+                ticker=ticker,
+                additional_context={
+                    "company_name": name,
+                    "analysis_date": selections["analysis_date"],
+                    "llm_provider": selections["llm_provider"],
+                },
+                exception=e
+            )
             continue
     
     # Create composite report
@@ -966,6 +982,16 @@ def run_batch_analysis(selections, companies):
     console.print(f"- Buy recommendations: {len(buy_recommendations)}")
     console.print(f"- Sell recommendations: {len(sell_recommendations)}")
     console.print(f"- Hold recommendations: {len(hold_recommendations)}")
+    
+    # Show error summary if there were any errors
+    error_logger = get_error_logger()
+    error_summary = error_logger.summarize_errors()
+    if error_summary["total_errors"] > 0:
+        console.print(f"\n[yellow]Errors encountered during analysis:[/yellow]")
+        console.print(f"- Total errors: {error_summary['total_errors']}")
+        for error_type, count in error_summary["errors_by_type"].items():
+            console.print(f"- {error_type}: {count}")
+        console.print(f"\n[dim]Error logs saved to: error_logs/[/dim]")
 
 
 def run_single_analysis(selections, ticker, company_name=None):
