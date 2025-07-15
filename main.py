@@ -21,8 +21,6 @@ config["online_tools"] = True  # Use online tools for real-time data
 ta = TradingAgentsGraph(debug=True, config=config)
 
 # forward propagate
-_, decision = ta.propagate("NVDA", "2024-05-10")
-print(decision)
-
-# Memorize mistakes and reflect
-# ta.reflect_and_remember(1000) # parameter is the position returns
+print("Starting analysis for AAPL on 2025-01-15...")
+_, decision = ta.propagate("AAPL", "2025-01-15")
+print("\nFinal Decision:", decision)

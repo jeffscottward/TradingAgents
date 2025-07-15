@@ -61,7 +61,6 @@ class TradingAgentsGraph:
         if self.config["llm_provider"].lower() in ["openai", "ollama", "openrouter", "groq"]:
             # For Groq, we need to use the GROQ_API_KEY
             if self.config["llm_provider"].lower() == "groq":
-                import os
                 api_key = os.getenv("GROQ_API_KEY")
                 self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=self.config["backend_url"], api_key=api_key)
                 self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=self.config["backend_url"], api_key=api_key)
