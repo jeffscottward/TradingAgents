@@ -21,6 +21,7 @@ pytz
 redis
 chainlit
 rich
+python-dotenv
 questionary
 langchain_anthropic
 langchain-google-genai

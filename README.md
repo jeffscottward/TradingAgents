@@ -1,5 +1,9 @@
+# TradingAgents: Multi-Agents LLM Financial Trading Framework
+
+<!-- markdownlint-disable MD033 -->
+
 <p align="center">
-  <img src="assets/TauricResearch.png" style="width: 60%; height: auto;">
+  <img src="assets/TauricResearch.png" alt="Tauric Research logo" style="width: 60%; height: auto;">
 </p>
 
 <div align="center" style="line-height: 1;">
@@ -13,19 +17,17 @@
 
 <div align="center">
   <!-- Keep these links. Translations will automatically update with the README. -->
-  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=de">Deutsch</a> | 
-  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=es">Español</a> | 
-  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=fr">français</a> | 
-  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=ja">日本語</a> | 
-  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=ko">한국어</a> | 
-  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=pt">Português</a> | 
-  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=ru">Русский</a> | 
+  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=de">Deutsch</a> |
+  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=es">Español</a> |
+  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=fr">français</a> |
+  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=ja">日本語</a> |
+  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=ko">한국어</a> |
+  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=pt">Português</a> |
+  <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=ru">Русский</a> |
   <a href="https://www.readme-i18n.com/TauricResearch/TradingAgents?lang=zh">中文</a>
 </div>
 
 ---
-
-# TradingAgents: Multi-Agents LLM Financial Trading Framework 
 
 > 🎉 **TradingAgents** officially released! We have received numerous inquiries about the work, and we would like to express our thanks for the enthusiasm in our community.
 >
@@ -52,7 +54,7 @@
 TradingAgents is a multi-agent trading framework that mirrors the dynamics of real-world trading firms. By deploying specialized LLM-powered agents: from fundamental analysts, sentiment experts, and technical analysts, to trader, risk management team, the platform collaboratively evaluates market conditions and informs trading decisions. Moreover, these agents engage in dynamic discussions to pinpoint the optimal strategy.
 
 <p align="center">
-  <img src="assets/schema.png" style="width: 100%; height: auto;">
+  <img src="assets/schema.png" alt="TradingAgents framework schema" style="width: 100%; height: auto;">
 </p>
 
 > TradingAgents framework is designed for research purposes. Trading performance may vary based on many factors, including the chosen backbone language models, model temperature, trading periods, the quality of data, and other non-deterministic factors. [It is not intended as financial, investment, or trading advice.](https://tauric.ai/disclaimer/)
@@ -60,35 +62,39 @@ TradingAgents is a multi-agent trading framework that mirrors the dynamics of re
 Our framework decomposes complex trading tasks into specialized roles. This ensures the system achieves a robust, scalable approach to market analysis and decision-making.
 
 ### Analyst Team
+
 - Fundamentals Analyst: Evaluates company financials and performance metrics, identifying intrinsic values and potential red flags.
 - Sentiment Analyst: Analyzes social media and public sentiment using sentiment scoring algorithms to gauge short-term market mood.
 - News Analyst: Monitors global news and macroeconomic indicators, interpreting the impact of events on market conditions.
 - Technical Analyst: Utilizes technical indicators (like MACD and RSI) to detect trading patterns and forecast price movements.
 
 <p align="center">
-  <img src="assets/analyst.png" width="100%" style="display: inline-block; margin: 0 2%;">
+  <img src="assets/analyst.png" alt="Analyst team diagram" width="100%" style="display: inline-block; margin: 0 2%;">
 </p>
 
 ### Researcher Team
+
 - Comprises both bullish and bearish researchers who critically assess the insights provided by the Analyst Team. Through structured debates, they balance potential gains against inherent risks.
 
 <p align="center">
-  <img src="assets/researcher.png" width="70%" style="display: inline-block; margin: 0 2%;">
+  <img src="assets/researcher.png" alt="Researcher team diagram" width="70%" style="display: inline-block; margin: 0 2%;">
 </p>
 
 ### Trader Agent
+
 - Composes reports from the analysts and researchers to make informed trading decisions. It determines the timing and magnitude of trades based on comprehensive market insights.
 
 <p align="center">
-  <img src="assets/trader.png" width="70%" style="display: inline-block; margin: 0 2%;">
+  <img src="assets/trader.png" alt="Trader agent diagram" width="70%" style="display: inline-block; margin: 0 2%;">
 </p>
 
 ### Risk Management and Portfolio Manager
+
 - Continuously evaluates portfolio risk by assessing market volatility, liquidity, and other risk factors. The risk management team evaluates and adjusts trading strategies, providing assessment reports to the Portfolio Manager for final decision.
 - The Portfolio Manager approves/rejects the transaction proposal. If approved, the order will be sent to the simulated exchange and executed.
 
 <p align="center">
-  <img src="assets/risk.png" width="70%" style="display: inline-block; margin: 0 2%;">
+  <img src="assets/risk.png" alt="Risk management diagram" width="70%" style="display: inline-block; margin: 0 2%;">
 </p>
 
 ## Installation and CLI
@@ -96,55 +102,130 @@ Our framework decomposes complex trading tasks into specialized roles. This ensu
 ### Installation
 
 Clone TradingAgents:
+
 ```bash
 git clone https://github.com/TauricResearch/TradingAgents.git
 cd TradingAgents
 ```
 
+#### Option 1: Using UV (Recommended)
+
+[UV](https://github.com/astral-sh/uv) is a fast Python package installer and resolver. If you don't have UV installed:
+
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# or with Homebrew
+brew install uv
+```
+
+Set up the project with UV:
+
+```bash
+# Create virtual environment with Python 3.13
+uv venv .venv --python 3.13
+
+# Activate the virtual environment
+source .venv/bin/activate  # On macOS/Linux
+# .venv\Scripts\activate   # On Windows
+
+# Install all dependencies
+uv pip install -r requirements.txt
+
+# Install the package in development mode
+uv pip install -e .
+```
+
+#### Option 2: Using Traditional Python/Conda
+
 Create a virtual environment in any of your favorite environment managers:
+
 ```bash
 conda create -n tradingagents python=3.13
 conda activate tradingagents
 ```
 
 Install dependencies:
+
 ```bash
 pip install -r requirements.txt
+pip install -e .
 ```
 
 ### Required APIs
 
-You will also need the FinnHub API for financial data. All of our code is implemented with the free tier.
-```bash
-export FINNHUB_API_KEY=$YOUR_FINNHUB_API_KEY
-```
+You will need API keys for FinnHub (financial data) and OpenAI (LLM agents). All of our code is implemented with the free tier.
 
-You will need the OpenAI API for all the agents.
-```bash
-export OPENAI_API_KEY=$YOUR_OPENAI_API_KEY
-```
+1. Copy the sample environment file:
+
+   ```bash
+   cp .env.sample .env
+   ```
+
+2. Edit `.env` and add your API keys:
+
+   ```bash
+   # Get your free FinnHub API key from: https://finnhub.io/register
+   FINNHUB_API_KEY=your_finnhub_api_key_here
+
+   # Get your OpenAI API key from: https://platform.openai.com/api-keys
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+3. The API keys will be automatically loaded when you run the CLI.
 
 ### CLI Usage
 
-You can also try out the CLI directly by running:
+Run the CLI directly:
+
 ```bash
+# With UV (recommended)
+uv run python -m cli.main
+
+# Or with standard Python
 python -m cli.main
 ```
+
 You will see a screen where you can select your desired tickers, date, LLMs, research depth, etc.
 
 <p align="center">
-  <img src="assets/cli/cli_init.png" width="100%" style="display: inline-block; margin: 0 2%;">
+  <img src="assets/cli/cli_init.png" alt="CLI initialization screenshot" width="100%" style="display: inline-block; margin: 0 2%;">
 </p>
 
 An interface will appear showing results as they load, letting you track the agent's progress as it runs.
 
 <p align="center">
-  <img src="assets/cli/cli_news.png" width="100%" style="display: inline-block; margin: 0 2%;">
+  <img src="assets/cli/cli_news.png" alt="CLI news screenshot" width="100%" style="display: inline-block; margin: 0 2%;">
 </p>
 
 <p align="center">
-  <img src="assets/cli/cli_transaction.png" width="100%" style="display: inline-block; margin: 0 2%;">
+  <img src="assets/cli/cli_transaction.png" alt="CLI transaction screenshot" width="100%" style="display: inline-block; margin: 0 2%;">
 </p>
+
+### Troubleshooting
+
+#### Common Issues
+
+1. **ModuleNotFoundError: No module named 'tradingagents'**
+
+   - Make sure you installed the package in development mode: `uv pip install -e .` or `pip install -e .`
+   - This allows Python to find the local `tradingagents` module
+
+2. **Missing tradingagents directory**
+
+   - If you see deleted files in git status, restore them: `git restore tradingagents/`
+   - This can happen if the directory was accidentally deleted
+
+3. **API Key Errors**
+
+   - Ensure your `.env` file exists and contains valid API keys
+   - The `.env` file should be in the root directory of the project
+   - API keys are automatically loaded when using the CLI
+
+4. **UV-specific issues**
+   - UV might recreate the virtual environment. Always activate it: `source .venv/bin/activate`
+   - If dependencies are missing after UV commands, run: `uv pip install -r requirements.txt` again
 
 ## TradingAgents Package
 
@@ -198,16 +279,19 @@ We welcome contributions from the community! Whether it's fixing a bug, improvin
 
 ## Citation
 
-Please reference our work if you find *TradingAgents* provides you with some help :)
+Please reference our work if you find _TradingAgents_ provides you with some help :)
 
-```
+```bibtex
 @misc{xiao2025tradingagentsmultiagentsllmfinancial,
-      title={TradingAgents: Multi-Agents LLM Financial Trading Framework}, 
+      title={TradingAgents: Multi-Agents LLM Financial Trading Framework},
       author={Yijia Xiao and Edward Sun and Di Luo and Wei Wang},
       year={2025},
       eprint={2412.20138},
       archivePrefix={arXiv},
       primaryClass={q-fin.TR},
-      url={https://arxiv.org/abs/2412.20138}, 
+      url={https://arxiv.org/abs/2412.20138},
 }
 ```
+
+To run, use
+uv run python -m cli.main

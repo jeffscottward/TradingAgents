@@ -1,4 +1,11 @@
 from typing import Optional
+import os
+from dotenv import load_dotenv
+
+# 🚀 ~ load environment variables from .env file
+env_loaded = load_dotenv()
+if env_loaded:
+    print('🌱 ~ Environment variables loaded from .env')
 import datetime
 import typer
 from pathlib import Path
@@ -494,26 +501,49 @@ def get_user_selections():
 
 def get_ticker():
     """Get ticker symbol from user input."""
-    return typer.prompt("", default="SPY")
+    import questionary
+    ticker = questionary.text(
+        "",
+        default="SPY",
+        style=questionary.Style(
+            [
+                ("text", "fg:green"),
+                ("answer", "fg:white bold"),
+            ]
+        ),
+    ).ask()
+    return ticker if ticker else "SPY"
 
 
 def get_analysis_date():
     """Get the analysis date from user input."""
-    while True:
-        date_str = typer.prompt(
-            "", default=datetime.datetime.now().strftime("%Y-%m-%d")
-        )
+    import questionary
+    import re
+    
+    def validate_date(date_str: str) -> bool:
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+            return False
         try:
-            # Validate date format and ensure it's not in the future
             analysis_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
             if analysis_date.date() > datetime.datetime.now().date():
-                console.print("[red]Error: Analysis date cannot be in the future[/red]")
-                continue
-            return date_str
+                return False
+            return True
         except ValueError:
-            console.print(
-                "[red]Error: Invalid date format. Please use YYYY-MM-DD[/red]"
-            )
+            return False
+    
+    date_str = questionary.text(
+        "",
+        default=datetime.datetime.now().strftime("%Y-%m-%d"),
+        validate=lambda x: validate_date(x.strip()) or "Please enter a valid date in YYYY-MM-DD format (not in the future).",
+        style=questionary.Style(
+            [
+                ("text", "fg:green"),
+                ("answer", "fg:white bold"),
+            ]
+        ),
+    ).ask()
+    
+    return date_str if date_str else datetime.datetime.now().strftime("%Y-%m-%d")
 
 
 def display_complete_report(final_state):
