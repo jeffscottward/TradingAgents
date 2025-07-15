@@ -470,22 +470,14 @@ def get_user_selections():
     )
     selected_research_depth = select_research_depth()
 
-    # Step 5: OpenAI backend
-    console.print(
-        create_question_box(
-            "Step 5: OpenAI backend", "Select which service to talk to"
-        )
-    )
-    selected_llm_provider, backend_url = select_llm_provider()
+    # Step 5: Using Groq backend (skipped - using default)
+    # Use Groq by default
+    selected_llm_provider = "Groq"
+    backend_url = "https://api.groq.com/openai/v1"
     
-    # Step 6: Thinking agents
-    console.print(
-        create_question_box(
-            "Step 6: Thinking Agents", "Select your thinking agents for analysis"
-        )
-    )
-    selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
-    selected_deep_thinker = select_deep_thinking_agent(selected_llm_provider)
+    # Skip Step 6: Use Kimi K2 for both thinking agents
+    selected_shallow_thinker = "moonshotai/kimi-k2-instruct"
+    selected_deep_thinker = "moonshotai/kimi-k2-instruct"
 
     return {
         "ticker": selected_ticker,

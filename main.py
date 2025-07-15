@@ -9,7 +9,11 @@ from tradingagents.default_config import DEFAULT_CONFIG
 
 # Create a custom config
 config = DEFAULT_CONFIG.copy()
-# Using default OpenAI configuration
+# Use Groq API with Kimi K2 model
+config["llm_provider"] = "groq"
+config["backend_url"] = "https://api.groq.com/openai/v1"
+config["deep_think_llm"] = "moonshotai/kimi-k2-instruct"
+config["quick_think_llm"] = "moonshotai/kimi-k2-instruct"
 config["max_debate_rounds"] = 1  # Increase debate rounds
 config["online_tools"] = True  # Use online tools for real-time data
 
