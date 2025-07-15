@@ -6,7 +6,7 @@ load_dotenv()
 
 from cli.main import run_batch_analysis, create_composite_report
 from tradingagents.default_config import DEFAULT_CONFIG
-from tradingagents.agents.utils.analyst_types import AnalystType
+from cli.models import AnalystType
 import json
 
 # Create test selections that mimic what the CLI would provide
@@ -16,10 +16,10 @@ selections = {
     "batch_file": "resources/earnings/Q1-2025/test_companies.json",
     "analysis_date": "2025-01-15",
     "analysts": [
-        AnalystType.FUNDAMENTALS_ANALYST,
-        AnalystType.TECHNICAL_ANALYST,
-        AnalystType.NEWS_ANALYST,
-        AnalystType.SENTIMENT_ANALYST
+        AnalystType.FUNDAMENTALS,
+        AnalystType.MARKET,
+        AnalystType.NEWS,
+        AnalystType.SOCIAL
     ],
     "research_depth": 1,
     "llm_provider": "groq",
