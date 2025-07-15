@@ -1,0 +1,9 @@
+{
+  "companies": [
+    {"name": "Apple Inc.", "ticker": "AAPL"},
+    {"name": "Microsoft Corporation", "ticker": "MSFT"},
+    {"name": "Amazon.com Inc.", "ticker": "AMZN"},
+    {"name": "NVIDIA Corporation", "ticker": "NVDA"},
+    {"name": "Tesla Inc.", "ticker": "TSLA"}
+  ]
+}
