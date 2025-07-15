@@ -1,5 +1,5 @@
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage, AIMessage
-from typing import List
+from typing import List, Any
 from typing import Annotated
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import RemoveMessage
@@ -9,7 +9,7 @@ import functools
 import pandas as pd
 import os
 from dateutil.relativedelta import relativedelta
-from langchain_openai import ChatOpenAI
+# from langchain_openai import ChatOpenAI
 import tradingagents.dataflows.interface as interface
 from tradingagents.default_config import DEFAULT_CONFIG
 from langchain_core.messages import HumanMessage
@@ -368,7 +368,7 @@ class Toolkit:
         curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
     ):
         """
-        Retrieve the latest news about a given stock by using OpenAI's news API.
+        Retrieve the latest news about a given stock using FinnHub API.
         Args:
             ticker (str): Ticker of a company. e.g. AAPL, TSM
             curr_date (str): Current date in yyyy-mm-dd format
@@ -376,9 +376,9 @@ class Toolkit:
             str: A formatted string containing the latest news about the company on the given date.
         """
 
-        openai_news_results = interface.get_stock_news_openai(ticker, curr_date)
+        news_results = interface.get_stock_news(ticker, curr_date)
 
-        return openai_news_results
+        return news_results
 
     @staticmethod
     @tool
@@ -386,16 +386,16 @@ class Toolkit:
         curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
     ):
         """
-        Retrieve the latest macroeconomics news on a given date using OpenAI's macroeconomics news API.
+        Retrieve the latest macroeconomics news on a given date using FinnHub market news API.
         Args:
             curr_date (str): Current date in yyyy-mm-dd format
         Returns:
             str: A formatted string containing the latest macroeconomic news on the given date.
         """
 
-        openai_news_results = interface.get_global_news_openai(curr_date)
+        market_news_results = interface.get_global_market_news(curr_date)
 
-        return openai_news_results
+        return market_news_results
 
     @staticmethod
     @tool
@@ -404,7 +404,7 @@ class Toolkit:
         curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
     ):
         """
-        Retrieve the latest fundamental information about a given stock on a given date by using OpenAI's news API.
+        Retrieve the financial fundamental of a given stock on the specified date using yfinance.
         Args:
             ticker (str): Ticker of a company. e.g. AAPL, TSM
             curr_date (str): Current date in yyyy-mm-dd format
@@ -412,8 +412,55 @@ class Toolkit:
             str: A formatted string containing the latest fundamental information about the company on the given date.
         """
 
-        openai_fundamentals_results = interface.get_fundamentals_openai(
+        fundamentals_results = interface.get_stock_fundamentals(
             ticker, curr_date
         )
 
-        return openai_fundamentals_results
+        return fundamentals_results
+    
+    # Add new function names
+    @staticmethod
+    @tool
+    def get_stock_news(
+        ticker: Annotated[str, "the company's ticker"],
+        curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+    ):
+        """
+        Retrieve the latest news about a given stock using FinnHub API.
+        Args:
+            ticker (str): Ticker of a company. e.g. AAPL, TSM
+            curr_date (str): Current date in yyyy-mm-dd format
+        Returns:
+            str: A formatted string containing the latest news about the company on the given date.
+        """
+        return interface.get_stock_news(ticker, curr_date)
+    
+    @staticmethod
+    @tool
+    def get_global_market_news(
+        curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+    ):
+        """
+        Retrieve the latest macroeconomics news on a given date using FinnHub market news API.
+        Args:
+            curr_date (str): Current date in yyyy-mm-dd format
+        Returns:
+            str: A formatted string containing the latest macroeconomics news on the given date.
+        """
+        return interface.get_global_market_news(curr_date)
+    
+    @staticmethod
+    @tool  
+    def get_stock_fundamentals(
+        ticker: Annotated[str, "the company's ticker"],
+        curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+    ):
+        """
+        Retrieve the financial fundamental of a given stock on the specified date using yfinance.
+        Args:
+            ticker (str): Ticker of a company. e.g. AAPL, TSM
+            curr_date (str): Current date in yyyy-mm-dd format
+        Returns:
+            str: A formatted string containing the latest fundamental data such as P/E, PEG, P/S, etc on the given date.
+        """
+        return interface.get_stock_fundamentals(ticker, curr_date)

@@ -13,7 +13,7 @@ config = DEFAULT_CONFIG.copy()
 config["llm_provider"] = "groq"
 config["backend_url"] = "https://api.groq.com/openai/v1"
 config["deep_think_llm"] = "moonshotai/kimi-k2-instruct"
-config["quick_think_llm"] = "moonshotai/kimi-k2-instruct"
+config["quick_think_llm"] = "deepseek-r1-distill-llama-70b"
 config["max_debate_rounds"] = 1  # Increase debate rounds
 config["online_tools"] = False  # Use FinnHub data instead of online tools
 

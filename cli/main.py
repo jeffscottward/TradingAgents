@@ -32,8 +32,50 @@ from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.utils.error_logger import get_error_logger
 from cli.models import AnalystType
 from cli.utils import *
+import random
 
 console = Console()
+
+# Rate limiting decorator with exponential backoff
+def with_rate_limit(min_delay=1.0, max_delay=60.0, max_retries=5):
+    """Decorator to add rate limiting and exponential backoff to functions."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            delay = min_delay
+            last_exception = None
+            
+            for attempt in range(max_retries):
+                try:
+                    # Add a small random jitter to prevent thundering herd
+                    jitter = random.uniform(0, delay * 0.1)
+                    actual_delay = delay + jitter
+                    
+                    if attempt > 0:
+                        console.print(f"[yellow]Waiting {actual_delay:.1f}s before retry (attempt {attempt + 1}/{max_retries})...[/yellow]")
+                        time.sleep(actual_delay)
+                    
+                    return func(*args, **kwargs)
+                    
+                except Exception as e:
+                    last_exception = e
+                    error_msg = str(e).lower()
+                    
+                    # Check for rate limit errors
+                    if any(phrase in error_msg for phrase in ['over capacity', 'rate limit', '503', 'too many requests', '429']):
+                        # Exponential backoff
+                        delay = min(delay * 2, max_delay)
+                        continue
+                    else:
+                        # For other errors, re-raise immediately
+                        raise
+            
+            # If we've exhausted all retries, raise the last exception
+            if last_exception:
+                raise last_exception
+                
+        return wrapper
+    return decorator
 
 app = typer.Typer(
     name="TradingAgents",
@@ -495,9 +537,23 @@ def get_user_selections():
     selected_llm_provider = "Groq"
     backend_url = "https://api.groq.com/openai/v1"
     
-    # Skip Step 6: Use Kimi K2 for both thinking agents
-    selected_shallow_thinker = "moonshotai/kimi-k2-instruct"
-    selected_deep_thinker = "moonshotai/kimi-k2-instruct"
+    # Skip Step 6: Model selection for batch processing
+    # For batch mode, use more stable models to avoid capacity issues
+    # Options: deepseek-r1-distill-llama-70b, mixtral-8x7b-32768, gemma2-9b-it
+    
+    # Allow environment variables to override default models
+    default_batch_model = os.getenv("TRADINGAGENTS_BATCH_MODEL", "deepseek-r1-distill-llama-70b")
+    default_single_model_deep = os.getenv("TRADINGAGENTS_SINGLE_MODEL_DEEP", "moonshotai/kimi-k2-instruct")
+    default_single_model_quick = os.getenv("TRADINGAGENTS_SINGLE_MODEL_QUICK", "deepseek-r1-distill-llama-70b")
+    
+    if analysis_mode == "batch":
+        # Use deepseek for better stability during batch processing
+        selected_shallow_thinker = default_batch_model
+        selected_deep_thinker = default_batch_model
+    else:
+        # For single analysis, use specialized models
+        selected_shallow_thinker = default_single_model_quick  # DeepSeek for quick thinking
+        selected_deep_thinker = default_single_model_deep      # Kimi for deep thinking
 
     return {
         "mode": analysis_mode,
@@ -935,7 +991,14 @@ def run_batch_analysis(selections, companies):
     sell_recommendations = []
     hold_recommendations = []
     
-    console.print(f"\n[bold green]Starting batch analysis for {len(companies)} companies[/bold green]\n")
+    # For batch processing, use more stable models to avoid rate limiting
+    batch_selections = selections.copy()
+    # Use deepseek-r1-distill-llama-70b for batch processing as it's more stable
+    batch_selections["deep_thinker"] = os.getenv("TRADINGAGENTS_BATCH_MODEL", "deepseek-r1-distill-llama-70b")
+    batch_selections["shallow_thinker"] = os.getenv("TRADINGAGENTS_BATCH_MODEL", "deepseek-r1-distill-llama-70b")
+    
+    console.print(f"\n[bold green]Starting batch analysis for {len(companies)} companies[/bold green]")
+    console.print(f"[dim]Using model: {batch_selections['deep_thinker']}[/dim]\n")
     
     for i, company in enumerate(companies, 1):
         ticker = company.get("ticker", "")
@@ -945,7 +1008,7 @@ def run_batch_analysis(selections, companies):
         
         # Run individual analysis
         try:
-            result = run_single_analysis(selections, ticker, name)
+            result = run_single_analysis(batch_selections, ticker, name)
             all_results.append(result)
             
             # Categorize based on recommendation
@@ -955,6 +1018,12 @@ def run_batch_analysis(selections, companies):
                 sell_recommendations.append(result)
             else:
                 hold_recommendations.append(result)
+            
+            # Add a small delay between analyses to prevent overwhelming the API
+            if i < len(companies):  # Don't delay after the last company
+                delay = random.uniform(1.0, 3.0)  # Random delay between 1-3 seconds
+                console.print(f"[dim]Waiting {delay:.1f}s before next analysis...[/dim]")
+                time.sleep(delay)
                 
         except Exception as e:
             console.print(f"[red]Error analyzing {ticker}: {e}[/red]")
@@ -994,11 +1063,22 @@ def run_batch_analysis(selections, companies):
         console.print(f"\n[dim]Error logs saved to: error_logs/[/dim]")
 
 
+@with_rate_limit(min_delay=2.0, max_delay=120.0, max_retries=5)
 def run_single_analysis(selections, ticker, company_name=None):
     """Run analysis for a single ticker and return results."""
     # Update selections with current ticker
     analysis_selections = selections.copy()
     analysis_selections["ticker"] = ticker
+    
+    # Allow environment variable override for single analysis models
+    if os.getenv("TRADINGAGENTS_SINGLE_MODEL_DEEP"):
+        analysis_selections["deep_thinker"] = os.getenv("TRADINGAGENTS_SINGLE_MODEL_DEEP")
+    if os.getenv("TRADINGAGENTS_SINGLE_MODEL_QUICK"):
+        analysis_selections["shallow_thinker"] = os.getenv("TRADINGAGENTS_SINGLE_MODEL_QUICK")
+    # Legacy support for single model override
+    if os.getenv("TRADINGAGENTS_SINGLE_MODEL"):
+        analysis_selections["deep_thinker"] = os.getenv("TRADINGAGENTS_SINGLE_MODEL")
+        analysis_selections["shallow_thinker"] = os.getenv("TRADINGAGENTS_SINGLE_MODEL")
     
     # Run the standard analysis
     result = execute_trading_analysis(analysis_selections)

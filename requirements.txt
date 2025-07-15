@@ -1,5 +1,5 @@
 typing-extensions
-langchain-openai
+# langchain-openai  # removed - not using OpenAI
 langchain-experimental
 pandas
 yfinance

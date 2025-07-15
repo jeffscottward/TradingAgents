@@ -6,7 +6,8 @@ import json
 from datetime import date
 from typing import Dict, Any, Tuple, List, Optional
 
-from langchain_openai import ChatOpenAI
+# from langchain_openai import ChatOpenAI  # removed - not using OpenAI
+from langchain_groq import ChatGroq
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -58,15 +59,14 @@ class TradingAgentsGraph:
         )
 
         # Initialize LLMs
-        if self.config["llm_provider"].lower() in ["openai", "ollama", "openrouter", "groq"]:
-            # For Groq, we need to use the GROQ_API_KEY
-            if self.config["llm_provider"].lower() == "groq":
-                api_key = os.getenv("GROQ_API_KEY")
-                self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=self.config["backend_url"], api_key=api_key)
-                self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=self.config["backend_url"], api_key=api_key)
-            else:
-                self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
-                self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
+        if self.config["llm_provider"].lower() == "groq":
+            # Use langchain-groq for Groq integration
+            api_key = os.getenv("GROQ_API_KEY")
+            self.deep_thinking_llm = ChatGroq(model=self.config["deep_think_llm"], api_key=api_key)
+            self.quick_thinking_llm = ChatGroq(model=self.config["quick_think_llm"], api_key=api_key)
+        elif self.config["llm_provider"].lower() in ["ollama", "openrouter"]:
+            # For other providers, you'll need to implement appropriate integrations
+            raise ValueError(f"Provider {self.config['llm_provider']} requires custom implementation without OpenAI")
         elif self.config["llm_provider"].lower() == "anthropic":
             self.deep_thinking_llm = ChatAnthropic(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
             self.quick_thinking_llm = ChatAnthropic(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
@@ -131,7 +131,7 @@ class TradingAgentsGraph:
             "social": ToolNode(
                 [
                     # online tools
-                    self.toolkit.get_stock_news_openai,
+                    self.toolkit.get_stock_news,
                     # offline tools
                     self.toolkit.get_reddit_stock_info,
                 ]
@@ -139,7 +139,7 @@ class TradingAgentsGraph:
             "news": ToolNode(
                 [
                     # online tools
-                    self.toolkit.get_global_news_openai,
+                    self.toolkit.get_global_market_news,
                     self.toolkit.get_google_news,
                     # offline tools
                     self.toolkit.get_finnhub_news,
@@ -149,7 +149,7 @@ class TradingAgentsGraph:
             "fundamentals": ToolNode(
                 [
                     # online tools
-                    self.toolkit.get_fundamentals_openai,
+                    self.toolkit.get_stock_fundamentals,
                     # offline tools
                     self.toolkit.get_finnhub_company_insider_sentiment,
                     self.toolkit.get_finnhub_company_insider_transactions,

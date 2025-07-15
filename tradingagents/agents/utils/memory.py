@@ -1,24 +1,11 @@
 import chromadb
 from chromadb.config import Settings
-from openai import OpenAI
+# from openai import OpenAI  # removed - not using OpenAI
 
 
 class FinancialSituationMemory:
     def __init__(self, name, config):
-        # Check if we're using Groq - it doesn't support embeddings
-        if "groq" in config.get("llm_provider", "").lower() or "groq" in config["backend_url"]:
-            # Use a simple hash-based embedding for Groq
-            self.use_hash_embedding = True
-            self.embedding = None
-        elif config["backend_url"] == "http://localhost:11434/v1":
-            self.use_hash_embedding = False
-            self.embedding = "nomic-embed-text"
-        else:
-            self.use_hash_embedding = False
-            self.embedding = "text-embedding-3-small"
-        
-        if not self.use_hash_embedding:
-            self.client = OpenAI(base_url=config["backend_url"])
+        # Always use hash-based embeddings since we're not using OpenAI
         self.chroma_client = chromadb.Client(Settings(allow_reset=True))
         try:
             self.situation_collection = self.chroma_client.get_collection(name=name)
@@ -27,36 +14,30 @@ class FinancialSituationMemory:
 
     def get_embedding(self, text):
         """Get embedding for a text"""
-        if self.use_hash_embedding:
-            # Use a simple hash-based embedding for systems without embedding support
-            import hashlib
-            import numpy as np
-            
-            # Create a deterministic hash-based embedding
-            hash_object = hashlib.sha256(text.encode())
-            hash_hex = hash_object.hexdigest()
-            
-            # Convert hash to a 384-dimensional vector (to match small embedding size)
-            embedding = []
-            for i in range(0, len(hash_hex), 2):
-                byte_val = int(hash_hex[i:i+2], 16)
-                # Normalize to [-1, 1] range
-                normalized = (byte_val / 127.5) - 1.0
-                embedding.append(normalized)
-            
-            # Pad or truncate to 384 dimensions
-            target_dim = 384
-            if len(embedding) < target_dim:
-                embedding.extend([0.0] * (target_dim - len(embedding)))
-            else:
-                embedding = embedding[:target_dim]
-            
-            return embedding
+        # Always use hash-based embedding since we're not using OpenAI
+        import hashlib
+        import numpy as np
+        
+        # Create a deterministic hash-based embedding
+        hash_object = hashlib.sha256(text.encode())
+        hash_hex = hash_object.hexdigest()
+        
+        # Convert hash to a 384-dimensional vector (to match small embedding size)
+        embedding = []
+        for i in range(0, len(hash_hex), 2):
+            byte_val = int(hash_hex[i:i+2], 16)
+            # Normalize to [-1, 1] range
+            normalized = (byte_val / 127.5) - 1.0
+            embedding.append(normalized)
+        
+        # Pad or truncate to 384 dimensions
+        target_dim = 384
+        if len(embedding) < target_dim:
+            embedding.extend([0.0] * (target_dim - len(embedding)))
         else:
-            response = self.client.embeddings.create(
-                model=self.embedding, input=text
-            )
-            return response.data[0].embedding
+            embedding = embedding[:target_dim]
+        
+        return embedding
 
     def add_situations(self, situations_and_advice):
         """Add financial situations and their corresponding advice. Parameter is a list of tuples (situation, rec)"""

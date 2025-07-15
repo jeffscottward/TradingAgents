@@ -227,6 +227,32 @@ An interface will appear showing results as they load, letting you track the age
    - UV might recreate the virtual environment. Always activate it: `source .venv/bin/activate`
    - If dependencies are missing after UV commands, run: `uv pip install -r requirements.txt` again
 
+5. **Rate Limiting and Capacity Errors**
+   - If you encounter "over capacity" or 503 errors with Groq models, the system will automatically retry with exponential backoff
+   - For batch processing, the system uses more stable models by default (`deepseek-r1-distill-llama-70b`)
+   - You can override models using environment variables:
+     - `TRADINGAGENTS_BATCH_MODEL`: Model for batch processing (default: `deepseek-r1-distill-llama-70b`)
+     - `TRADINGAGENTS_SINGLE_MODEL`: Model for single analysis (default: uses your selection)
+   - Example: `export TRADINGAGENTS_BATCH_MODEL=mixtral-8x7b-32768`
+
+6. **Groq Configuration**
+   - The system now uses Groq API instead of OpenAI
+   - Make sure your `.env` file contains: `GROQ_API_KEY=your_groq_api_key`
+   - Default models:
+     - Quick Thinking: `deepseek-r1-distill-llama-70b` (fast reasoning)
+     - Deep Thinking: `moonshotai/kimi-k2-instruct` (advanced analysis)
+     - Batch Processing: `deepseek-r1-distill-llama-70b` (stable for long runs)
+   - Available Groq models:
+     - `deepseek-r1-distill-llama-70b` (excellent for quick analysis)
+     - `moonshotai/kimi-k2-instruct` (advanced reasoning, may have capacity issues)
+     - `deepseek-r1-distill-llama-70b` (recommended for stability)
+     - `mixtral-8x7b-32768`
+   - Environment variable overrides:
+     - `TRADINGAGENTS_SINGLE_MODEL_DEEP`: Deep thinking model for single analysis
+     - `TRADINGAGENTS_SINGLE_MODEL_QUICK`: Quick thinking model for single analysis
+     - `TRADINGAGENTS_BATCH_MODEL`: Model for batch processing (default: deepseek-r1-distill-llama-70b)
+   - The system automatically handles rate limiting with retry logic
+
 ## TradingAgents Package
 
 ### Implementation Details

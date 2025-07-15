@@ -12,8 +12,77 @@ import os
 import pandas as pd
 from tqdm import tqdm
 import yfinance as yf
-from openai import OpenAI
+# from openai import OpenAI  # removed - not using OpenAI
 from .config import get_config, set_config, DATA_DIR
+import finnhub
+from datetime import timedelta
+
+
+def get_finnhub_news_live(ticker, curr_date, look_back_days=7):
+    """
+    Get news from FinnHub API directly (live data)
+    """
+    try:
+        # Setup FinnHub client
+        api_key = os.getenv("FINNHUB_API_KEY")
+        if not api_key:
+            return pd.DataFrame()
+            
+        finnhub_client = finnhub.Client(api_key=api_key)
+        
+        # Parse dates
+        if isinstance(curr_date, str):
+            end_date = datetime.strptime(curr_date, "%Y-%m-%d")
+        else:
+            end_date = curr_date
+            
+        start_date = end_date - timedelta(days=look_back_days)
+        
+        # Get company news
+        news = finnhub_client.company_news(
+            ticker, 
+            _from=start_date.strftime("%Y-%m-%d"), 
+            to=end_date.strftime("%Y-%m-%d")
+        )
+        
+        if not news:
+            return pd.DataFrame()
+            
+        # Convert to DataFrame
+        df = pd.DataFrame(news)
+        if not df.empty:
+            # Convert timestamp to datetime
+            df['datetime'] = pd.to_datetime(df['datetime'], unit='s')
+            # Sort by date
+            df = df.sort_values('datetime', ascending=False)
+            
+        return df
+        
+    except Exception as e:
+        print(f"Error fetching FinnHub news: {e}")
+        return pd.DataFrame()
+
+
+def get_finnhub_market_news_live(curr_date, category='general'):
+    """
+    Get market news from FinnHub API directly
+    """
+    try:
+        # Setup FinnHub client
+        api_key = os.getenv("FINNHUB_API_KEY")
+        if not api_key:
+            return []
+            
+        finnhub_client = finnhub.Client(api_key=api_key)
+        
+        # Get general market news
+        news = finnhub_client.general_news(category)
+        
+        return news if news else []
+        
+    except Exception as e:
+        print(f"Error fetching market news: {e}")
+        return []
 
 
 def get_finnhub_news(
@@ -26,36 +95,52 @@ def get_finnhub_news(
 ):
     """
     Retrieve news about a company within a time frame
+    Try live API first, fall back to file-based data if needed
 
     Args
         ticker (str): ticker for the company you are interested in
-        start_date (str): Start date in yyyy-mm-dd format
-        end_date (str): End date in yyyy-mm-dd format
+        curr_date (str): Current date in yyyy-mm-dd format
+        look_back_days (int): how many days to look back
     Returns
-        str: dataframe containing the news of the company in the time frame
+        pd.DataFrame: dataframe containing the news of the company
 
     """
-
-    start_date = datetime.strptime(curr_date, "%Y-%m-%d")
-    before = start_date - relativedelta(days=look_back_days)
-    before = before.strftime("%Y-%m-%d")
-
-    result = get_data_in_range(ticker, before, curr_date, "news_data", DATA_DIR)
-
-    if len(result) == 0:
-        return ""
-
-    combined_result = ""
-    for day, data in result.items():
-        if len(data) == 0:
-            continue
-        for entry in data:
-            current_news = (
-                "### " + entry["headline"] + f" ({day})" + "\n" + entry["summary"]
-            )
-            combined_result += current_news + "\n\n"
-
-    return f"## {ticker} News, from {before} to {curr_date}:\n" + str(combined_result)
+    # Try live API first
+    df = get_finnhub_news_live(ticker, curr_date, look_back_days)
+    
+    if not df.empty:
+        return df
+    
+    # Fall back to file-based data
+    try:
+        start_date = datetime.strptime(curr_date, "%Y-%m-%d")
+        before = start_date - relativedelta(days=look_back_days)
+        before = before.strftime("%Y-%m-%d")
+        
+        result = get_data_in_range(ticker, before, curr_date, "news_data", DATA_DIR)
+        
+        if len(result) == 0:
+            return pd.DataFrame()
+        
+        # Convert to DataFrame format for consistency
+        news_list = []
+        for day, data in result.items():
+            if len(data) == 0:
+                continue
+            for entry in data:
+                news_list.append({
+                    'headline': entry.get('headline', ''),
+                    'summary': entry.get('summary', ''),
+                    'datetime': day,
+                    'source': entry.get('source', ''),
+                    'url': entry.get('url', '')
+                })
+        
+        return pd.DataFrame(news_list)
+        
+    except Exception as e:
+        print(f"Error reading file-based news: {e}")
+        return pd.DataFrame()
 
 
 def get_finnhub_company_insider_sentiment(
@@ -702,106 +787,159 @@ def get_YFin_data(
     return filtered_data
 
 
+def get_stock_news(ticker, curr_date):
+    """
+    Get stock news using FinnHub API
+    """
+    # Parse the date
+    if isinstance(curr_date, str):
+        curr_date_obj = datetime.strptime(curr_date, "%Y-%m-%d")
+    else:
+        curr_date_obj = curr_date
+        curr_date = curr_date_obj.strftime("%Y-%m-%d")
+    
+    # Get news from 7 days before to current date
+    start_date = (curr_date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
+    end_date = curr_date
+    
+    # Use FinnHub news API
+    news_data = get_finnhub_news(ticker, curr_date, 7)
+    
+    if news_data.empty:
+        return f"No news found for {ticker} in the specified period."
+    
+    # Format news data as text
+    result = f"News for {ticker} from {start_date} to {end_date}:\n\n"
+    for _, row in news_data.iterrows():
+        result += f"- {row['headline']} ({row['datetime']})\n"
+        if 'summary' in row and row['summary']:
+            result += f"  Summary: {row['summary']}\n"
+        result += "\n"
+    
+    return result
+
+
+# Keep the old name for backward compatibility but point to new function
 def get_stock_news_openai(ticker, curr_date):
-    config = get_config()
-    client = OpenAI(base_url=config["backend_url"])
-
-    response = client.responses.create(
-        model=config["quick_think_llm"],
-        input=[
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": f"Can you search Social Media for {ticker} from 7 days before {curr_date} to {curr_date}? Make sure you only get the data posted during that period.",
-                    }
-                ],
-            }
-        ],
-        text={"format": {"type": "text"}},
-        reasoning={},
-        tools=[
-            {
-                "type": "web_search_preview",
-                "user_location": {"type": "approximate"},
-                "search_context_size": "low",
-            }
-        ],
-        temperature=1,
-        max_output_tokens=4096,
-        top_p=1,
-        store=True,
-    )
-
-    return response.output[1].content[0].text
+    """Deprecated: Use get_stock_news instead"""
+    return get_stock_news(ticker, curr_date)
 
 
+def get_global_market_news(curr_date):
+    """
+    Get global market news using FinnHub market news API
+    """
+    # Parse the date
+    if isinstance(curr_date, str):
+        curr_date_obj = datetime.strptime(curr_date, "%Y-%m-%d")
+    else:
+        curr_date_obj = curr_date
+        
+    start_date = (curr_date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
+    end_date = curr_date_obj.strftime("%Y-%m-%d")
+    
+    # Try to get general market news first
+    market_news = get_finnhub_market_news_live(curr_date_obj)
+    
+    if market_news:
+        # Format market news
+        result = f"Global Market News from {start_date} to {end_date}:\n\n"
+        for i, article in enumerate(market_news[:20]):  # Limit to 20 articles
+            result += f"- {article.get('headline', 'No headline')} ({datetime.fromtimestamp(article.get('datetime', 0))})\n"
+            if article.get('summary'):
+                result += f"  Summary: {article['summary'][:200]}...\n"
+            result += "\n"
+        return result
+    
+    # Fall back to news from major indices
+    tickers = ["SPY", "QQQ", "DIA", "IWM"]
+    all_news = []
+    
+    for ticker in tickers:
+        news_data = get_finnhub_news(ticker, curr_date_obj.strftime("%Y-%m-%d"), 7)
+        if not news_data.empty:
+            all_news.append((ticker, news_data))
+    
+    if not all_news:
+        return "No global market news found for the specified period."
+    
+    # Format news data as text
+    result = f"Global Market News from {start_date} to {end_date}:\n\n"
+    for ticker, news_data in all_news:
+        result += f"\n{ticker} News:\n"
+        for _, row in news_data.head(5).iterrows():
+            result += f"- {row['headline']} ({row['datetime']})\n"
+        result += "\n"
+    
+    return result
+
+
+# Keep the old name for backward compatibility
 def get_global_news_openai(curr_date):
-    config = get_config()
-    client = OpenAI(base_url=config["backend_url"])
-
-    response = client.responses.create(
-        model=config["quick_think_llm"],
-        input=[
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": f"Can you search global or macroeconomics news from 7 days before {curr_date} to {curr_date} that would be informative for trading purposes? Make sure you only get the data posted during that period.",
-                    }
-                ],
-            }
-        ],
-        text={"format": {"type": "text"}},
-        reasoning={},
-        tools=[
-            {
-                "type": "web_search_preview",
-                "user_location": {"type": "approximate"},
-                "search_context_size": "low",
-            }
-        ],
-        temperature=1,
-        max_output_tokens=4096,
-        top_p=1,
-        store=True,
-    )
-
-    return response.output[1].content[0].text
+    """Deprecated: Use get_global_market_news instead"""
+    return get_global_market_news(curr_date)
 
 
+def get_stock_fundamentals(ticker, curr_date):
+    """
+    Get stock fundamentals using yfinance
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        
+        # Extract key fundamental metrics
+        fundamentals = {
+            "Symbol": ticker,
+            "Date": curr_date,
+            "PE Ratio": info.get("trailingPE", "N/A"),
+            "Forward PE": info.get("forwardPE", "N/A"),
+            "PS Ratio": info.get("priceToSalesTrailing12Months", "N/A"),
+            "PB Ratio": info.get("priceToBook", "N/A"),
+            "Market Cap": info.get("marketCap", "N/A"),
+            "Enterprise Value": info.get("enterpriseValue", "N/A"),
+            "Revenue": info.get("totalRevenue", "N/A"),
+            "Gross Profit": info.get("grossProfits", "N/A"),
+            "EBITDA": info.get("ebitda", "N/A"),
+            "Net Income": info.get("netIncomeToCommon", "N/A"),
+            "Free Cash Flow": info.get("freeCashflow", "N/A"),
+            "Operating Cash Flow": info.get("operatingCashflow", "N/A"),
+            "Debt to Equity": info.get("debtToEquity", "N/A"),
+            "Return on Equity": info.get("returnOnEquity", "N/A"),
+            "Return on Assets": info.get("returnOnAssets", "N/A"),
+            "Profit Margin": info.get("profitMargins", "N/A"),
+            "Operating Margin": info.get("operatingMargins", "N/A"),
+        }
+        
+        # Format as table-like string
+        result = f"Fundamental Data for {ticker} as of {curr_date}:\n\n"
+        result += "Metric                  | Value\n"
+        result += "------------------------|------------------------\n"
+        
+        for metric, value in fundamentals.items():
+            if metric not in ["Symbol", "Date"]:
+                # Format large numbers
+                if isinstance(value, (int, float)) and value != "N/A":
+                    if value > 1e9:
+                        value_str = f"${value/1e9:.2f}B"
+                    elif value > 1e6:
+                        value_str = f"${value/1e6:.2f}M"
+                    elif value > 1:
+                        value_str = f"{value:.2f}"
+                    else:
+                        value_str = f"{value:.4f}"
+                else:
+                    value_str = str(value)
+                
+                result += f"{metric:<23} | {value_str}\n"
+        
+        return result
+        
+    except Exception as e:
+        return f"Error fetching fundamental data for {ticker}: {str(e)}"
+
+
+# Keep the old name for backward compatibility
 def get_fundamentals_openai(ticker, curr_date):
-    config = get_config()
-    client = OpenAI(base_url=config["backend_url"])
-
-    response = client.responses.create(
-        model=config["quick_think_llm"],
-        input=[
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": f"Can you search Fundamental for discussions on {ticker} during of the month before {curr_date} to the month of {curr_date}. Make sure you only get the data posted during that period. List as a table, with PE/PS/Cash flow/ etc",
-                    }
-                ],
-            }
-        ],
-        text={"format": {"type": "text"}},
-        reasoning={},
-        tools=[
-            {
-                "type": "web_search_preview",
-                "user_location": {"type": "approximate"},
-                "search_context_size": "low",
-            }
-        ],
-        temperature=1,
-        max_output_tokens=4096,
-        top_p=1,
-        store=True,
-    )
-
-    return response.output[1].content[0].text
+    """Deprecated: Use get_stock_fundamentals instead"""
+    return get_stock_fundamentals(ticker, curr_date)
