@@ -25,7 +25,8 @@ selections = {
     "llm_provider": "groq",
     "backend_url": "https://api.groq.com/openai/v1",
     "shallow_thinker": "moonshotai/kimi-k2-instruct",
-    "deep_thinker": "moonshotai/kimi-k2-instruct"
+    "deep_thinker": "moonshotai/kimi-k2-instruct",
+    "online_tools": False  # Use FinnHub data instead of online tools
 }
 
 # Load companies from the batch file

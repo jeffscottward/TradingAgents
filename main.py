@@ -15,7 +15,7 @@ config["backend_url"] = "https://api.groq.com/openai/v1"
 config["deep_think_llm"] = "moonshotai/kimi-k2-instruct"
 config["quick_think_llm"] = "moonshotai/kimi-k2-instruct"
 config["max_debate_rounds"] = 1  # Increase debate rounds
-config["online_tools"] = True  # Use online tools for real-time data
+config["online_tools"] = False  # Use FinnHub data instead of online tools
 
 # Initialize with custom config
 ta = TradingAgentsGraph(debug=True, config=config)
