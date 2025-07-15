@@ -432,13 +432,32 @@ def get_user_selections():
             box_content += f"\n[dim]Default: {default}[/dim]"
         return Panel(box_content, border_style="blue", padding=(1, 2))
 
-    # Step 1: Ticker symbol
+    # Step 0: Select mode (single or batch)
     console.print(
         create_question_box(
-            "Step 1: Ticker Symbol", "Enter the ticker symbol to analyze", "SPY"
+            "Step 0: Analysis Mode", "Select analysis mode"
         )
     )
-    selected_ticker = get_ticker()
+    analysis_mode = select_analysis_mode()
+    
+    if analysis_mode == "batch":
+        # Batch mode: select JSON file
+        console.print(
+            create_question_box(
+                "Step 1: Select Batch File", "Choose a JSON file with companies to analyze"
+            )
+        )
+        batch_file = select_batch_file()
+        selected_ticker = None  # Will be set later for batch mode
+    else:
+        # Single mode: Step 1: Ticker symbol
+        console.print(
+            create_question_box(
+                "Step 1: Ticker Symbol", "Enter the ticker symbol to analyze", "SPY"
+            )
+        )
+        selected_ticker = get_ticker()
+        batch_file = None
 
     # Step 2: Analysis date
     default_date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -480,7 +499,9 @@ def get_user_selections():
     selected_deep_thinker = "moonshotai/kimi-k2-instruct"
 
     return {
+        "mode": analysis_mode,
         "ticker": selected_ticker,
+        "batch_file": batch_file,
         "analysis_date": analysis_date,
         "analysts": selected_analysts,
         "research_depth": selected_research_depth,
@@ -489,6 +510,65 @@ def get_user_selections():
         "shallow_thinker": selected_shallow_thinker,
         "deep_thinker": selected_deep_thinker,
     }
+
+
+def select_analysis_mode():
+    """Select between single ticker or batch analysis mode."""
+    import questionary
+    mode = questionary.select(
+        "Select analysis mode:",
+        choices=[
+            questionary.Choice("Single ticker analysis", value="single"),
+            questionary.Choice("Batch analysis (JSON file)", value="batch"),
+        ],
+        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        style=questionary.Style(
+            [
+                ("selected", "fg:magenta noinherit"),
+                ("highlighted", "fg:magenta noinherit"),
+                ("pointer", "fg:magenta noinherit"),
+            ]
+        ),
+    ).ask()
+    return mode if mode else "single"
+
+
+def select_batch_file():
+    """Select a JSON file for batch analysis."""
+    import questionary
+    from pathlib import Path
+    
+    # Look for JSON files in resources/earnings directory
+    earnings_dir = Path("resources/earnings")
+    json_files = []
+    
+    if earnings_dir.exists():
+        for folder in earnings_dir.iterdir():
+            if folder.is_dir():
+                for json_file in folder.glob("*.json"):
+                    json_files.append((f"{folder.name}/{json_file.name}", str(json_file)))
+    
+    if not json_files:
+        console.print("[red]No JSON files found in resources/earnings directory[/red]")
+        return None
+    
+    choice = questionary.select(
+        "Select a JSON file to analyze:",
+        choices=[
+            questionary.Choice(display, value=path)
+            for display, path in json_files
+        ],
+        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        style=questionary.Style(
+            [
+                ("selected", "fg:magenta noinherit"),
+                ("highlighted", "fg:magenta noinherit"),
+                ("pointer", "fg:magenta noinherit"),
+            ]
+        ),
+    ).ask()
+    
+    return choice
 
 
 def get_ticker():
@@ -753,10 +833,180 @@ def extract_content_string(content):
     else:
         return str(content)
 
+def create_composite_report(selections, all_results, buy_recommendations, sell_recommendations, hold_recommendations):
+    """Create a composite report summarizing all batch analysis results."""
+    from datetime import datetime
+    from pathlib import Path
+    
+    # Create batch results directory
+    batch_name = Path(selections["batch_file"]).stem
+    results_dir = Path(DEFAULT_CONFIG["results_dir"]) / "batch" / batch_name / selections["analysis_date"]
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create composite report content
+    report_content = f"""# Batch Analysis Report: {batch_name}
+Date: {selections["analysis_date"]}
+Total Companies Analyzed: {len(all_results)}
+
+## Summary
+- **Buy Recommendations**: {len(buy_recommendations)}
+- **Sell Recommendations**: {len(sell_recommendations)}
+- **Hold Recommendations**: {len(hold_recommendations)}
+
+## Buy Recommendations
+
+"""
+    
+    # Add buy recommendations
+    for result in buy_recommendations:
+        ticker = result["ticker"]
+        name = result.get("company_name", ticker)
+        reports = result.get("reports", {})
+        
+        report_content += f"### {name} ({ticker})\n"
+        
+        # Extract key information from reports
+        if "final_trade_decision" in result.get("final_state", {}):
+            report_content += f"**Decision**: {result['final_state']['final_trade_decision']}\n\n"
+        
+        if "trader_investment_plan" in reports:
+            report_content += f"**Trading Plan**: {reports['trader_investment_plan'][:500]}...\n\n"
+        
+        report_content += "---\n\n"
+    
+    # Add sell recommendations
+    report_content += "## Sell Recommendations\n\n"
+    
+    for result in sell_recommendations:
+        ticker = result["ticker"]
+        name = result.get("company_name", ticker)
+        reports = result.get("reports", {})
+        
+        report_content += f"### {name} ({ticker})\n"
+        
+        if "final_trade_decision" in result.get("final_state", {}):
+            report_content += f"**Decision**: {result['final_state']['final_trade_decision']}\n\n"
+        
+        if "trader_investment_plan" in reports:
+            report_content += f"**Trading Plan**: {reports['trader_investment_plan'][:500]}...\n\n"
+        
+        report_content += "---\n\n"
+    
+    # Add hold recommendations summary
+    report_content += "## Hold Recommendations\n\n"
+    
+    for result in hold_recommendations:
+        ticker = result["ticker"]
+        name = result.get("company_name", ticker)
+        report_content += f"- {name} ({ticker})\n"
+    
+    # Add timestamp
+    report_content += f"\n\n---\n*Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n"
+    
+    # Save composite report
+    composite_report_path = results_dir / "composite_report.md"
+    with open(composite_report_path, 'w') as f:
+        f.write(report_content)
+    
+    console.print(f"\n[green]Composite report saved to: {composite_report_path}[/green]")
+    
+    # Save individual reports
+    for result in all_results:
+        ticker = result["ticker"]
+        ticker_dir = results_dir / ticker
+        ticker_dir.mkdir(exist_ok=True)
+        
+        # Save all reports for this ticker
+        if "reports" in result:
+            for report_name, report_content in result["reports"].items():
+                report_path = ticker_dir / f"{report_name}.md"
+                with open(report_path, 'w') as f:
+                    f.write(report_content)
+
+
+def run_batch_analysis(selections, companies):
+    """Run analysis for multiple companies and create a composite report."""
+    import json
+    from datetime import datetime
+    
+    all_results = []
+    buy_recommendations = []
+    sell_recommendations = []
+    hold_recommendations = []
+    
+    console.print(f"\n[bold green]Starting batch analysis for {len(companies)} companies[/bold green]\n")
+    
+    for i, company in enumerate(companies, 1):
+        ticker = company.get("ticker", "")
+        name = company.get("name", ticker)
+        
+        console.print(f"\n[bold cyan]Analyzing {i}/{len(companies)}: {name} ({ticker})[/bold cyan]")
+        
+        # Run individual analysis
+        try:
+            result = run_single_analysis(selections, ticker, name)
+            all_results.append(result)
+            
+            # Categorize based on recommendation
+            if result.get("recommendation") == "BUY":
+                buy_recommendations.append(result)
+            elif result.get("recommendation") == "SELL":
+                sell_recommendations.append(result)
+            else:
+                hold_recommendations.append(result)
+                
+        except Exception as e:
+            console.print(f"[red]Error analyzing {ticker}: {e}[/red]")
+            continue
+    
+    # Create composite report
+    create_composite_report(selections, all_results, buy_recommendations, sell_recommendations, hold_recommendations)
+    
+    console.print(f"\n[bold green]Batch analysis complete![/bold green]")
+    console.print(f"- Buy recommendations: {len(buy_recommendations)}")
+    console.print(f"- Sell recommendations: {len(sell_recommendations)}")
+    console.print(f"- Hold recommendations: {len(hold_recommendations)}")
+
+
+def run_single_analysis(selections, ticker, company_name=None):
+    """Run analysis for a single ticker and return results."""
+    # Update selections with current ticker
+    analysis_selections = selections.copy()
+    analysis_selections["ticker"] = ticker
+    
+    # Run the standard analysis
+    result = execute_trading_analysis(analysis_selections)
+    
+    # Add company name if provided
+    if company_name:
+        result["company_name"] = company_name
+    
+    return result
+
+
 def run_analysis():
     # First get all user selections
     selections = get_user_selections()
+    
+    if selections["mode"] == "batch" and selections["batch_file"]:
+        # Load companies from JSON file
+        import json
+        with open(selections["batch_file"], 'r') as f:
+            data = json.load(f)
+            companies = data.get("companies", [])
+        
+        if companies:
+            run_batch_analysis(selections, companies)
+        else:
+            console.print("[red]No companies found in the selected file[/red]")
+    else:
+        # Single ticker analysis
+        result = execute_trading_analysis(selections)
+        display_complete_report(result.get("final_state", {}))
 
+
+def execute_trading_analysis(selections):
+    """Execute trading analysis for a single ticker."""
     # Create config with selected research depth
     config = DEFAULT_CONFIG.copy()
     config["max_debate_rounds"] = selections["research_depth"]
@@ -1113,9 +1363,29 @@ def run_analysis():
                 message_buffer.update_report_section(section, final_state[section])
 
         # Display the complete final report
-        display_complete_report(final_state)
-
-        update_display(layout)
+        # Store final state for return
+        final_state = chunk
+        
+        # Only display in non-batch mode
+        if selections.get("mode") != "batch":
+            display_complete_report(final_state)
+            update_display(layout)
+        
+        # Extract recommendation from final state
+        recommendation = "HOLD"  # Default
+        if "final_trade_decision" in final_state:
+            decision_text = final_state["final_trade_decision"].lower()
+            if "buy" in decision_text:
+                recommendation = "BUY"
+            elif "sell" in decision_text:
+                recommendation = "SELL"
+        
+        return {
+            "ticker": selections["ticker"],
+            "recommendation": recommendation,
+            "final_state": final_state,
+            "reports": message_buffer.report_sections
+        }
 
 
 @app.command()
